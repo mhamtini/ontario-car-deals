@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ontario Car Deal Finder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ford: { blue: "#003478", light: "#1a56c4" },
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body { font-family: "Segoe UI", system-ui, sans-serif; }
+    .tab-active   { border-bottom: 3px solid #003478; color: #003478; font-weight: 700; }
+    .tab-inactive { border-bottom: 3px solid transparent; color: #6b7280; }
+    .card-hover   { transition: box-shadow .2s, transform .2s; }
+    .card-hover:hover { box-shadow: 0 8px 24px rgba(0,52,120,.15); transform: translateY(-2px); }
+    .badge-large  { background:#dbeafe; color:#1e40af; }
+    .badge-medium { background:#fef3c7; color:#92400e; }
+    .badge-small  { background:#f3f4f6; color:#374151; }
+    .badge-0pct   { background:#d1fae5; color:#065f46; }
+    .badge-islamic{ background:#ede9fe; color:#4c1d95; }
+    input[type=range]::-webkit-slider-thumb { accent-color:#003478; }
+    .result-best  { border: 2px solid #003478; background:#eff6ff; }
+    .deal-best    { border: 2px solid #16a34a; background:#f0fdf4; }
+    .deal-card    { transition: box-shadow .15s; }
+    .deal-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.10); }
+    .star-badge   { font-size:1.1rem; }
+    .highlight-row{ background:#fefce8; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<header id="site-header" class="bg-gray-900 text-white shadow-lg transition-colors duration-300">
+  <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <svg class="w-9 h-9" viewBox="0 0 64 64" fill="none">
+        <circle cx="32" cy="32" r="28" fill="white" opacity=".15"/>
+        <text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle"
+              font-size="22" font-weight="bold" fill="white" font-family="Arial">🚗</text>
+      </svg>
+      <div>
+        <div class="text-xl font-bold tracking-tight">Ontario Car Deal Finder</div>
+        <div class="text-xs text-gray-300">Best prices · 0% finance · Islamic options · All makes</div>
+      </div>
+    </div>
+    <span class="hidden md:block text-xs bg-white/10 rounded px-2 py-1">Ontario, Canada 🍁</span>
+  </div>
+</header>
+
+<!-- ═══════════════════════════ TABS ═════════════════════════════ -->
+<div class="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 flex gap-0">
+    <button id="tab-dealers" onclick="showTab('dealers')"
+      class="px-6 py-4 text-sm transition tab-active">
+      🔍 Find Dealers
+    </button>
+    <button id="tab-search" onclick="showTab('search')"
+      class="px-6 py-4 text-sm transition tab-inactive">
+      🏷️ Model Search
+    </button>
+    <button id="tab-calc" onclick="showTab('calc')"
+      class="px-6 py-4 text-sm transition tab-inactive">
+      🧮 Cost Calculator
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ DEALERS TAB ══════════════════════ -->
+<div id="page-dealers" class="max-w-7xl mx-auto px-4 py-6">
+
+  <!-- Make Selector -->
+  <div class="mb-5">
+    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Step 1 — Choose a make</p>
+    <div id="make-grid" class="flex flex-wrap gap-2"></div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="bg-white rounded-2xl shadow p-4 mb-6 flex flex-wrap gap-3 items-end">
+    <!-- Search -->
+    <div class="flex-1 min-w-[180px]">
+      <label class="block text-xs font-semibold text-gray-500 mb-1">Search dealer name</label>
+      <input id="search" oninput="renderDealers()" type="text" placeholder="e.g. Rose City, Planet…"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"/>
+    </div>
+    <!-- Region -->
+    <div class="min-w-[140px]">
+      <label class="block text-xs font-semibold text-gray-500 mb-1">Region</label>
+      <select id="filterRegion" onchange="renderDealers()"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none bg-white">
+        <option value="all">All Ontario</option>
+        <option value="toronto-gta">Toronto / GTA</option>
+        <option value="windsor">Windsor Area</option>
+        <option value="london">London</option>
+        <option value="barrie">Barrie / North</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <!-- Size -->
+    <div class="min-w-[130px]">
+      <label class="block text-xs font-semibold text-gray-500 mb-1">Dealer size</label>
+      <select id="filterSize" onchange="renderDealers()"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none bg-white">
+        <option value="all">All sizes</option>
+        <option value="large">Large (high volume)</option>
+        <option value="medium">Medium</option>
+        <option value="small">Small / Rural</option>
+      </select>
+    </div>
+    <!-- Checkboxes -->
+    <div class="flex flex-col gap-2">
+      <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+        <input type="checkbox" id="filterZero" onchange="renderDealers()"
+          class="accent-green-600 w-4 h-4"/>
+        <span class="font-medium text-gray-700">0% Finance deals available</span>
+      </label>
+      <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+        <input type="checkbox" id="filterIslamic" onchange="renderDealers()"
+          class="accent-purple-600 w-4 h-4"/>
+        <span class="font-medium text-gray-700">Islamic-finance friendly</span>
+      </label>
+    </div>
+    <!-- Reset -->
+    <button onclick="resetFilters()"
+      class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 font-medium transition">
+      Reset
+    </button>
+  </div>
+
+  <!-- Count -->
+  <p id="dealer-count" class="text-sm text-gray-500 mb-4"></p>
+
+  <!-- Grid -->
+  <div id="dealer-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+
+</div>
+
+<!-- ═══════════════════════════ MODEL SEARCH TAB ════════════════ -->
+<div id="page-search" class="hidden max-w-5xl mx-auto px-4 py-6">
+
+  <h2 class="text-xl font-bold text-gray-800 mb-1">🏷️ Model Price Intelligence</h2>
+  <p class="text-sm text-gray-500 mb-5">Select a model to see real pricing, lease math, and payment comparisons — not just a dealer link.</p>
+
+  <!-- Search box + make filter -->
+  <div class="flex flex-wrap gap-3 mb-5">
+    <div class="flex-1 min-w-[220px]">
+      <label class="block text-xs font-semibold text-gray-500 mb-1">Search model</label>
+      <input id="model-search" type="text" placeholder="e.g. Bronco, RAV4, Telluride…"
+        oninput="filterModelList()"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"/>
+    </div>
+    <div class="min-w-[150px]">
+      <label class="block text-xs font-semibold text-gray-500 mb-1">Filter by make</label>
+      <select id="model-make-filter" onchange="filterModelList()"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none bg-white">
+        <option value="all">All Makes</option>
+      </select>
+    </div>
+    <div class="min-w-[150px]">
+      <label class="block text-xs font-semibold text-gray-500 mb-1">Category</label>
+      <select id="model-cat-filter" onchange="filterModelList()"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none bg-white">
+        <option value="all">All Types</option>
+        <option value="suv">SUV / Crossover / Off-Road</option>
+        <option value="truck">Truck</option>
+        <option value="sports car">Sports Car</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Model pill list -->
+  <div id="model-pill-list" class="flex flex-wrap gap-2 mb-6"></div>
+
+  <!-- Hint shown before any model is selected -->
+  <div id="model-hint" class="text-center py-12 text-gray-400">
+    <div class="text-4xl mb-2">🔎</div>
+    <p class="text-sm">Type a model name above (e.g. <strong>Bronco</strong>, <strong>RAV4</strong>, <strong>Wrangler</strong>) or click any pill to see full pricing.</p>
+  </div>
+
+  <!-- Detail panel (hidden until a model is selected) -->
+  <div id="model-detail" class="hidden"></div>
+
+</div>
+
+<!-- ═══════════════════════════ CALCULATOR TAB ═══════════════════ -->
+<div id="page-calc" class="hidden max-w-4xl mx-auto px-4 py-6">
+
+  <h2 class="text-xl font-bold text-ford-blue mb-1">Car Cost Calculator</h2>
+  <p class="text-sm text-gray-500 mb-6">Compare Cash · Conventional Finance · Islamic (Murabaha) · Lease — all with Ontario HST and employee discount.</p>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <!-- ── Vehicle Details ── -->
+    <div class="bg-white rounded-2xl shadow p-5">
+      <h3 class="font-semibold text-gray-700 mb-4 flex items-center gap-2">
+        🚗 Vehicle Details
+      </h3>
+
+      <div class="space-y-4">
+        <!-- MSRP -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">
+            MSRP / Vehicle Price (CAD $)
+          </label>
+          <input id="msrp" type="number" value="52000" min="0" step="500"
+            oninput="calculate()"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"/>
+          <p class="text-xs text-gray-400 mt-1">e.g. Bronco Big Bend + Sasquatch ≈ $52,000 CAD</p>
+        </div>
+
+        <!-- A-Plan -->
+        <div class="bg-blue-50 rounded-xl p-3">
+          <label class="flex items-center gap-2 text-sm cursor-pointer font-semibold text-blue-800 select-none">
+            <input type="checkbox" id="aplan" onchange="calculate()" class="accent-blue-700 w-4 h-4" checked/>
+            Ford Employee A-Plan Discount
+          </label>
+          <div class="mt-2 flex items-center gap-2">
+            <span class="text-xs text-gray-600">Discount %:</span>
+            <input id="aplanPct" type="number" value="5" min="0" max="20" step="0.5"
+              oninput="calculate()"
+              class="w-20 border border-blue-300 rounded px-2 py-1 text-sm text-center focus:ring-2 focus:ring-blue-400 outline-none"/>
+            <span class="text-xs text-gray-500">(typical A-Plan ≈ 4–6% below MSRP)</span>
+          </div>
+        </div>
+
+        <!-- HST -->
+        <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+          <input type="checkbox" id="hst" onchange="calculate()" class="accent-gray-600 w-4 h-4" checked/>
+          <span>Include Ontario HST <span class="font-semibold text-gray-700">(13%)</span></span>
+        </label>
+
+        <!-- Trade-in -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">
+            Trade-in / Down Payment (CAD $)
+          </label>
+          <input id="downpayment" type="number" value="5000" min="0" step="500"
+            oninput="calculate()"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Finance Options ── -->
+    <div class="bg-white rounded-2xl shadow p-5">
+      <h3 class="font-semibold text-gray-700 mb-4">💰 Payment Options</h3>
+      <!-- Payment Type Tabs -->
+      <div class="flex rounded-xl overflow-hidden border border-gray-200 mb-4 text-xs font-semibold">
+        <button data-pt="cash"     onclick="setPt('cash')"     id="pt-cash"     class="flex-1 py-2 transition bg-ford-blue text-white">Cash</button>
+        <button data-pt="finance"  onclick="setPt('finance')"  id="pt-finance"  class="flex-1 py-2 transition bg-white text-gray-600 hover:bg-gray-50">Finance</button>
+        <button data-pt="islamic"  onclick="setPt('islamic')"  id="pt-islamic"  class="flex-1 py-2 transition bg-white text-gray-600 hover:bg-gray-50">Islamic</button>
+        <button data-pt="lease"    onclick="setPt('lease')"    id="pt-lease"    class="flex-1 py-2 transition bg-white text-gray-600 hover:bg-gray-50">Lease</button>
+      </div>
+
+      <!-- Cash panel -->
+      <div id="panel-cash" class="space-y-2">
+        <p class="text-sm text-gray-600 bg-green-50 rounded-lg p-3">
+          ✅ Pay the full amount upfront after discount + tax.<br/>
+          <span class="text-xs text-gray-500">Best total cost. No ongoing interest. Sharia-compliant.</span>
+        </p>
+      </div>
+
+      <!-- Finance panel -->
+      <div id="panel-finance" class="hidden space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">APR (% per year)</label>
+            <input id="finRate" type="number" value="3.99" min="0" max="30" step="0.1"
+              oninput="calculate()"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"/>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Term (months)</label>
+            <select id="finTerm" onchange="calculate()"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none bg-white">
+              <option value="36">36</option>
+              <option value="48">48</option>
+              <option value="60" selected>60</option>
+              <option value="72">72</option>
+              <option value="84">84</option>
+            </select>
+          </div>
+        </div>
+        <p class="text-xs text-amber-700 bg-amber-50 rounded-lg p-2">
+          ⚠ Conventional finance involves riba (interest). Use <strong>0% APR</strong> or switch to Islamic tab for Sharia-compliant options.
+        </p>
+      </div>
+
+      <!-- Islamic (Murabaha) panel -->
+      <div id="panel-islamic" class="hidden space-y-3">
+        <div class="bg-purple-50 rounded-lg p-3 text-xs text-purple-800 mb-2">
+          🕌 <strong>Murabaha / Islamic Finance</strong>: The financier buys the car and sells it to you at a fixed pre-agreed profit margin — not compound interest. Total cost is locked at signing.
+          <br/><br/>Providers in Ontario: <strong>Amanah Finance</strong> · <strong>Manzil</strong>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Profit Rate (% flat on principal)</label>
+            <input id="islamRate" type="number" value="6.5" min="0" max="30" step="0.1"
+              oninput="calculate()"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"/>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Term (months)</label>
+            <select id="islamTerm" onchange="calculate()"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none bg-white">
+              <option value="36">36</option>
+              <option value="48">48</option>
+              <option value="60" selected>60</option>
+              <option value="72">72</option>
+              <option value="84">84</option>
+            </select>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500">Profit is calculated on the principal amount once (flat), not compounded monthly.</p>
+      </div>
+
+      <!-- Lease panel -->
+      <div id="panel-lease" class="hidden space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Money Factor (APR÷2400)</label>
+            <input id="leaseRate" type="number" value="0.00166" min="0" max="0.03" step="0.00001"
+              oninput="calculate()"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"/>
+            <p class="text-xs text-gray-400 mt-1">0% = 0.00000 &nbsp;|&nbsp; 4% = 0.00167</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Term (months)</label>
+            <select id="leaseTerm" onchange="calculate()"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none bg-white">
+              <option value="24">24</option>
+              <option value="36" selected>36</option>
+              <option value="48">48</option>
+              <option value="60">60</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Residual Value (%)</label>
+            <input id="leaseResidual" type="number" value="55" min="0" max="90" step="1"
+              oninput="calculate()"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"/>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Results ── -->
+  <div id="results" class="mt-6 bg-white rounded-2xl shadow p-5">
+    <h3 class="font-semibold text-gray-700 mb-4">📊 Results</h3>
+    <div id="results-body"></div>
+    <!-- Comparison Table -->
+    <div id="compare-table" class="mt-6"></div>
+  </div>
+
+  <!-- Disclaimer -->
+  <p class="text-xs text-gray-400 mt-4 text-center">
+    * Estimates only. Taxes, dealer fees, and exact rates may vary. Always verify with your dealer and financier.
+  </p>
+</div>
+
+<!-- ═══════════════════════════ SCRIPTS ══════════════════════════ -->
+<script src="dealers.js"></script>
+<script src="models.js"></script>
+<script>
+
+// ─── MAKE SELECTOR ──────────────────────────────────────────────
+let currentMake = "all";
+
+function buildMakePicker() {
+  const grid = document.getElementById("make-grid");
+  const allBtn = `<button onclick="selectMake('all')" id="make-all"
+    class="px-4 py-2 rounded-full text-sm font-semibold border-2 transition make-btn border-gray-800 bg-gray-800 text-white">
+    All Makes
+  </button>`;
+  const makeButtons = MAKES.map(m =>
+    `<button onclick="selectMake('${m.id}')" id="make-${m.id}"
+      style="--mc:${m.color}"
+      class="px-4 py-2 rounded-full text-sm font-semibold border-2 transition make-btn border-gray-300 text-gray-600 bg-white hover:border-[var(--mc)] hover:text-[var(--mc)]">
+      ${m.label}
+    </button>`
+  ).join("");
+  grid.innerHTML = allBtn + makeButtons;
+}
+
+function selectMake(id) {
+  currentMake = id;
+  // update button styles
+  document.querySelectorAll(".make-btn").forEach(btn => {
+    const bid = btn.id.replace("make-", "");
+    if (bid === id) {
+      const m = MAKES.find(x => x.id === id);
+      const col = m ? m.color : "#1f2937";
+      btn.style.backgroundColor = col;
+      btn.style.borderColor = col;
+      btn.style.color = "white";
+    } else {
+      btn.style.backgroundColor = "";
+      btn.style.borderColor = "";
+      btn.style.color = "";
+      btn.className = "px-4 py-2 rounded-full text-sm font-semibold border-2 transition make-btn border-gray-300 text-gray-600 bg-white hover:border-gray-700 hover:text-gray-700";
+    }
+  });
+  // update header colour
+  const m = MAKES.find(x => x.id === id);
+  document.getElementById("site-header").style.backgroundColor = m ? m.color : "#111827";
+  renderDealers();
+}
+
+// ─── TAB SWITCHER ────────────────────────────────────────────────
+function showTab(tab) {
+  ["dealers","search","calc"].forEach(t => {
+    document.getElementById("page-" + t).classList.toggle("hidden", t !== tab);
+    const btn = document.getElementById("tab-" + t);
+    btn.className = "px-6 py-4 text-sm transition " + (t === tab ? "tab-active" : "tab-inactive");
+  });
+}
+
+// ─── DEALER RENDERER ─────────────────────────────────────────────
+const regionLabels = { "toronto-gta":"Toronto / GTA", windsor:"Windsor Area", london:"London", barrie:"Barrie / North", other:"Other" };
+const sizeLabels   = { large:"Large", medium:"Medium", small:"Small" };
+
+function renderDealers() {
+  const q       = document.getElementById("search").value.toLowerCase();
+  const region  = document.getElementById("filterRegion").value;
+  const size    = document.getElementById("filterSize").value;
+  const zero    = document.getElementById("filterZero").checked;
+  const islamic = document.getElementById("filterIslamic").checked;
+
+  const pool = currentMake === "all" ? DEALERS : DEALERS.filter(d => d.make === currentMake);
+
+  const filtered = pool.filter(d => {
+    if (q && !d.name.toLowerCase().includes(q) && !d.city.toLowerCase().includes(q)) return false;
+    if (region !== "all" && d.region !== region) return false;
+    if (size   !== "all" && d.size   !== size)   return false;
+    if (zero    && !d.hasZeroPercent)    return false;
+    if (islamic && !d.islamicFriendly)  return false;
+    return true;
+  });
+
+  const makeLabel = currentMake === "all" ? "all makes" :
+    (MAKES.find(m => m.id === currentMake)?.label ?? currentMake);
+  document.getElementById("dealer-count").textContent =
+    `Showing ${filtered.length} of ${pool.length} Ontario ${makeLabel} dealers`;
+
+  const grid = document.getElementById("dealer-grid");
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="col-span-3 text-center py-16 text-gray-400">
+      <div class="text-4xl mb-2">🔎</div>No dealers match your filters. Try selecting a different make or clearing filters.</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(d => {
+    const makeInfo = MAKES.find(m => m.id === d.make);
+    const makeBadge = makeInfo
+      ? `<span class="text-xs font-bold px-2 py-0.5 rounded-full text-white"
+               style="background-color:${makeInfo.color}">${makeInfo.label}</span>`
+      : "";
+    return `
+    <div class="bg-white rounded-2xl shadow card-hover p-5 flex flex-col gap-3 border border-gray-100">
+      <!-- Header -->
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <h3 class="font-bold text-gray-800 text-sm leading-tight">${d.name}</h3>
+          <p class="text-xs text-gray-500 mt-0.5">📍 ${d.city} · ${regionLabels[d.region] ?? d.region}</p>
+        </div>
+        <span class="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full badge-${d.size}">
+          ${sizeLabels[d.size]}
+        </span>
+      </div>
+      <!-- Badges -->
+      <div class="flex flex-wrap gap-1.5">
+        ${makeBadge}
+        ${d.hasZeroPercent   ? `<span class="text-xs px-2 py-0.5 rounded-full badge-0pct font-semibold">✅ 0% Finance</span>` : ''}
+        ${d.islamicFriendly  ? `<span class="text-xs px-2 py-0.5 rounded-full badge-islamic font-semibold">🕌 Islamic Friendly</span>` : ''}
+      </div>
+      <!-- Notes -->
+      <p class="text-xs text-gray-600 leading-relaxed">${d.notes}</p>
+      <!-- Footer -->
+      <div class="flex items-center gap-2 mt-auto pt-2 border-t border-gray-100">
+        ${d.phone ? `<span class="text-xs text-gray-500">📞 ${d.phone}</span>` : ''}
+        <a href="${d.website}" target="_blank" rel="noopener"
+           class="ml-auto text-xs text-white px-3 py-1.5 rounded-lg transition font-semibold"
+           style="background-color:${makeInfo ? makeInfo.color : '#003478'}">
+          Visit Website ↗
+        </a>
+      </div>
+    </div>
+  `;
+  }).join("");
+}
+
+function resetFilters() {
+  document.getElementById("search").value = "";
+  document.getElementById("filterRegion").value = "all";
+  document.getElementById("filterSize").value = "all";
+  document.getElementById("filterZero").checked = false;
+  document.getElementById("filterIslamic").checked = false;
+  selectMake("all");
+}
+
+// ─── CALCULATOR ──────────────────────────────────────────────────
+let currentPt = "cash";
+
+function setPt(pt) {
+  currentPt = pt;
+  ["cash","finance","islamic","lease"].forEach(p => {
+    const panel = document.getElementById("panel-" + p);
+    const btn   = document.getElementById("pt-" + p);
+    const active = p === pt;
+    panel.classList.toggle("hidden", !active);
+    btn.className = "flex-1 py-2 transition " +
+      (active ? "bg-ford-blue text-white" : "bg-white text-gray-600 hover:bg-gray-50");
+  });
+  calculate();
+}
+
+function fmt(n) {
+  return "$" + n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function calculate() {
+  const msrp       = parseFloat(document.getElementById("msrp").value)       || 0;
+  const aplanOn    = document.getElementById("aplan").checked;
+  const aplanPct   = parseFloat(document.getElementById("aplanPct").value)   || 0;
+  const hstOn      = document.getElementById("hst").checked;
+  const down       = parseFloat(document.getElementById("downpayment").value) || 0;
+
+  const discountAmt = aplanOn ? msrp * (aplanPct / 100) : 0;
+  const priceAfterDiscount = msrp - discountAmt;
+  const hstAmt     = hstOn ? priceAfterDiscount * 0.13 : 0;
+  const totalOnRoad = priceAfterDiscount + hstAmt;
+  const principal  = Math.max(0, totalOnRoad - down);
+
+  let monthly = 0, totalCost = 0, totalInterest = 0, label = "", isBest = false;
+  const allResults = {};
+
+  // --- Cash ---
+  allResults.cash = { monthly: null, total: totalOnRoad, extra: 0, label: "Cash" };
+
+  // --- Conventional Finance ---
+  const finRate = parseFloat(document.getElementById("finRate").value) || 0;
+  const finTerm = parseInt(document.getElementById("finTerm").value)   || 60;
+  if (finRate === 0) {
+    allResults.finance = { monthly: principal / finTerm, total: principal + down, extra: 0, label: "Finance (0% APR)" };
+  } else {
+    const r = finRate / 100 / 12;
+    const m = principal * r * Math.pow(1+r, finTerm) / (Math.pow(1+r, finTerm) - 1);
+    const tFin = m * finTerm + down;
+    allResults.finance = { monthly: m, total: tFin, extra: tFin - totalOnRoad, label: `Finance ${finRate}% / ${finTerm}mo` };
+  }
+
+  // --- Islamic (Murabaha) ---
+  const islamRate = parseFloat(document.getElementById("islamRate").value) || 0;
+  const islamTerm = parseInt(document.getElementById("islamTerm").value)   || 60;
+  const islamProfit = principal * (islamRate / 100);       // flat, one-time markup
+  const islamTotal  = principal + islamProfit + down;
+  const islamMonthly = (principal + islamProfit) / islamTerm;
+  allResults.islamic = { monthly: islamMonthly, total: islamTotal, extra: islamProfit, label: `Islamic ${islamRate}% flat / ${islamTerm}mo` };
+
+  // --- Lease ---
+  const mf       = parseFloat(document.getElementById("leaseRate").value)     || 0;
+  const leaseTerm= parseInt(document.getElementById("leaseTerm").value)        || 36;
+  const residPct = parseFloat(document.getElementById("leaseResidual").value) || 55;
+  const residual = priceAfterDiscount * (residPct / 100);    // residual on pre-tax price
+  const deprMonth= (priceAfterDiscount - residual) / leaseTerm;
+  const finCharge= (priceAfterDiscount + residual) * mf;
+  const lMonthly = (deprMonth + finCharge) * (hstOn ? 1.13 : 1);
+  const lTotal   = lMonthly * leaseTerm + down;
+  allResults.lease = { monthly: lMonthly, total: lTotal, extra: lTotal - totalOnRoad, label: `Lease ${(mf*2400).toFixed(2)}% / ${leaseTerm}mo` };
+
+  // ── Current panel result ──
+  const cur = allResults[currentPt];
+
+  const html = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div class="bg-gray-50 rounded-xl p-3 text-center">
+        <div class="text-xs text-gray-500 mb-1">MSRP</div>
+        <div class="font-bold text-gray-800">${fmt(msrp)}</div>
+      </div>
+      <div class="bg-blue-50 rounded-xl p-3 text-center">
+        <div class="text-xs text-gray-500 mb-1">After A-Plan Discount</div>
+        <div class="font-bold text-blue-800">${fmt(priceAfterDiscount)}</div>
+        ${discountAmt > 0 ? `<div class="text-xs text-green-600">−${fmt(discountAmt)}</div>` : ''}
+      </div>
+      <div class="bg-gray-50 rounded-xl p-3 text-center">
+        <div class="text-xs text-gray-500 mb-1">HST (13%)</div>
+        <div class="font-bold text-gray-700">${hstOn ? fmt(hstAmt) : '—'}</div>
+      </div>
+      <div class="bg-green-50 rounded-xl p-3 text-center">
+        <div class="text-xs text-gray-500 mb-1">Total On-Road (before financing)</div>
+        <div class="font-bold text-green-800">${fmt(totalOnRoad)}</div>
+      </div>
+    </div>
+    <div class="rounded-xl border-2 border-ford-blue bg-blue-50 p-4">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <div class="text-xs text-gray-500">${cur.label}</div>
+          ${cur.monthly !== null
+            ? `<div class="text-2xl font-bold text-ford-blue">${fmt(cur.monthly)}<span class="text-sm font-normal text-gray-500"> / mo</span></div>`
+            : `<div class="text-2xl font-bold text-ford-blue">${fmt(cur.total)}</div>`}
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-gray-500">Total cost over term</div>
+          <div class="text-lg font-bold text-gray-800">${fmt(cur.total)}</div>
+          ${cur.extra > 0 ? `<div class="text-xs text-red-500">+${fmt(cur.extra)} above on-road price</div>` : ''}
+          ${cur.extra === 0 ? `<div class="text-xs text-green-600">✅ No extra cost above on-road price</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById("results-body").innerHTML = html;
+
+  // Comparison table
+  const minTotal = Math.min(...Object.values(allResults).map(r => r.total));
+  const rows = Object.entries(allResults).map(([k, r]) => {
+    const isBest = r.total === minTotal;
+    return `<tr class="${isBest ? "bg-green-50" : (k === currentPt ? "bg-blue-50" : "")}">
+      <td class="px-3 py-2 text-sm font-medium text-gray-700">
+        ${isBest ? "⭐ " : ""}${r.label}
+      </td>
+      <td class="px-3 py-2 text-sm text-center text-gray-700">${r.monthly !== null ? fmt(r.monthly) + "/mo" : "—"}</td>
+      <td class="px-3 py-2 text-sm text-center font-semibold ${isBest ? "text-green-700" : "text-gray-800"}">${fmt(r.total)}</td>
+      <td class="px-3 py-2 text-sm text-center ${r.extra > 0 ? "text-red-500" : "text-green-600"}">${r.extra > 0 ? "+" + fmt(r.extra) : "✅ None"}</td>
+    </tr>`;
+  }).join("");
+
+  document.getElementById("compare-table").innerHTML = `
+    <h4 class="text-sm font-semibold text-gray-600 mb-2">Full Comparison</h4>
+    <div class="overflow-x-auto rounded-xl border border-gray-200">
+      <table class="w-full text-left text-sm min-w-[480px]">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-3 py-2 text-xs text-gray-500 font-semibold">Method</th>
+            <th class="px-3 py-2 text-xs text-gray-500 font-semibold text-center">Monthly</th>
+            <th class="px-3 py-2 text-xs text-gray-500 font-semibold text-center">Total Cost</th>
+            <th class="px-3 py-2 text-xs text-gray-500 font-semibold text-center">Extra vs Cash</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ─── MODEL SEARCH ────────────────────────────────────────────────
+
+let selectedModel = null;
+
+function buildModelMakeFilter() {
+  const sel = document.getElementById("model-make-filter");
+  MAKES.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m.id; opt.textContent = m.label;
+    sel.appendChild(opt);
+  });
+}
+
+function filterModelList(autoSelect) {
+  const q    = (document.getElementById("model-search").value || "").toLowerCase();
+  const make = document.getElementById("model-make-filter").value;
+  const cat  = document.getElementById("model-cat-filter").value;
+
+  const filtered = MODELS.filter(m => {
+    const matchQ    = !q || (m.model + " " + m.trim + " " + m.make).toLowerCase().includes(q);
+    const matchMake = make === "all" || m.make === make;
+    // "suv" bucket covers both suv and off-road suv
+    const catNorm   = m.category.replace("off-road ", "");
+    const matchCat  = cat === "all" || catNorm === cat || m.category === cat;
+    return matchQ && matchMake && matchCat;
+  });
+
+  // Auto-select first result whenever the user triggers a search
+  if (autoSelect !== false && filtered.length > 0) {
+    // keep selection if it's still in the filtered list, otherwise pick first
+    const stillVisible = filtered.find(m => selectedModel && m.id === selectedModel.id);
+    if (!stillVisible) {
+      selectedModel = filtered[0];
+    }
+  }
+
+  const container = document.getElementById("model-pill-list");
+  container.innerHTML = filtered.map(m => {
+    const makeInfo = MAKES.find(x => x.id === m.make);
+    const color    = makeInfo ? makeInfo.color : "#374151";
+    const active   = selectedModel && selectedModel.id === m.id;
+    return `<button onclick="selectModel('${m.id}')"
+      class="px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition"
+      style="border-color:${color};
+             background:${active ? color : "white"};
+             color:${active ? "white" : color}">
+      ${m.year} ${makeInfo ? makeInfo.label : ""} ${m.model} ${m.trim}
+    </button>`;
+  }).join("");
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<p class="text-sm text-gray-400">No models match — try a different spelling.</p>`;
+    document.getElementById("model-detail").className = "hidden";
+    document.getElementById("model-hint").className   = "";
+    return;
+  }
+
+  if (selectedModel) renderModelDetail();
+}
+
+function selectModel(id) {
+  selectedModel = MODELS.find(m => m.id === id);
+  if (!selectedModel) return;
+  filterModelList(false);    // re-render pills to show active state (no auto-select)
+  renderModelDetail();
+}
+
+function fmtC(n) {
+  return "$" + Math.round(n).toLocaleString("en-CA");
+}
+function fmtCDec(n) {
+  return "$" + n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function renderModelDetail() {
+  const m = selectedModel;
+  if (!m) return;
+  const makeInfo  = MAKES.find(x => x.id === m.make);
+  const brandColor = makeInfo ? makeInfo.color : "#1f2937";
+  const brandLabel = makeInfo ? makeInfo.label : m.make;
+
+  // ── Price baseline (MSRP + destination, no tax yet) ──
+  const totalMSRP  = m.msrp + m.destinationCAD;
+  const aplanSave  = m.aplanSavingsPct > 0 ? totalMSRP * (m.aplanSavingsPct / 100) : 0;
+  const afterAplan = totalMSRP - aplanSave;
+  const incentive  = m.canadianIncentive || 0;
+  const afterAll   = afterAplan - incentive;
+  const hst        = afterAll * 0.13;
+  const onRoad     = afterAll + hst;
+
+  // ── Payment scenarios (no down payment for apple-to-apple comparison) ──
+  const principal = afterAll;   // pre-tax financed (tax added to total manually)
+
+  // Cash
+  const cashTotal = onRoad;
+
+  // Finance 0% (if available)
+  const fin0Available = m.financeRates.r36 === 0 || m.financeRates.r48 === 0 || m.financeRates.r60 === 0;
+  const fin0Rate  = 0;
+  const fin0Term  = m.zeroPercentAvailableMonths || 60;
+  const fin0Monthly = fin0Available ? ((principal * 1.13) / fin0Term) : null;
+  const fin0Total   = fin0Available ? (fin0Monthly * fin0Term) : null;
+
+  // Finance at market rate (60mo)
+  const finRate60   = m.financeRates.r60;
+  const finR        = finRate60 / 100 / 12;
+  const fin60Monthly= (principal * 1.13) * finR * Math.pow(1+finR,60) / (Math.pow(1+finR,60)-1);
+  const fin60Total  = fin60Monthly * 60;
+
+  // Islamic Murabaha 6.5% flat / 60mo
+  const islamPct    = 6.5;
+  const islamProfit = principal * 1.13 * (islamPct/100);
+  const islamMonthly= (principal * 1.13 + islamProfit) / 60;
+  const islamTotal   = islamMonthly * 60;
+
+  // Lease 36mo
+  const lmf     = m.lease36.mf;
+  const lterm   = 36;
+  const residual= afterAplan * (m.lease36.residualPct / 100);
+  const depr    = (afterAplan - residual) / lterm;
+  const finCh   = (afterAplan + residual) * lmf;
+  const leaseMonthly = (depr + finCh) * 1.13;
+  const leaseTotal   = leaseMonthly * lterm;
+
+  // ── Determine best ──
+  const scenarios = [
+    { key:"cash",    label:"Cash",           monthly:null,          total:cashTotal,  extra:0 },
+    fin0Available
+      ? { key:"fin0",  label:`Finance 0% / ${fin0Term}mo`, monthly:fin0Monthly, total:fin0Total, extra:fin0Total-cashTotal }
+      : null,
+    { key:"fin60",   label:`Finance ${finRate60}% / 60mo`, monthly:fin60Monthly, total:fin60Total, extra:fin60Total-cashTotal },
+    { key:"islamic", label:`Islamic Murabaha ${islamPct}% flat / 60mo`, monthly:islamMonthly, total:islamTotal, extra:islamTotal-cashTotal },
+    { key:"lease",   label:`Lease ${(lmf*2400).toFixed(2)}% MF / 36mo`, monthly:leaseMonthly, total:leaseTotal, extra:leaseTotal-cashTotal },
+  ].filter(Boolean);
+
+  const minTotal  = Math.min(...scenarios.map(s => s.total));
+
+  // ── Render ──
+  const packageHtml = (m.packages||[]).length > 0
+    ? `<div class="mt-3"><div class="text-xs font-semibold text-gray-500 mb-1">Common Packages</div>
+       <div class="flex flex-wrap gap-1.5">${m.packages.map(p =>
+         `<span class="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">${p.name} <span class="font-semibold">${fmtC(p.price)}</span></span>`
+       ).join("")}</div></div>` : "";
+
+  const compHtml = (m.competitorComparison||[]).length > 0
+    ? `<div class="mt-3"><div class="text-xs font-semibold text-gray-500 mb-1">Compare against</div>
+       <div class="flex flex-wrap gap-1.5">${m.competitorComparison.map(c =>
+         `<span class="text-xs border border-gray-300 text-gray-600 px-2 py-0.5 rounded-full">${c}</span>`
+       ).join("")}</div></div>` : "";
+
+  const tableRows = scenarios.map(s => {
+    const best = s.total === minTotal;
+    return `<tr class="${best ? "deal-best" : ""} deal-card">
+      <td class="px-3 py-3 text-sm font-medium text-gray-800">
+        ${best ? `<span class="star-badge">⭐ </span>` : ""}${s.label}
+        ${s.key === "fin0" ? `<span class="ml-1 text-xs bg-green-100 text-green-700 px-1.5 rounded-full">0%</span>` : ""}
+        ${s.key === "islamic" ? `<span class="ml-1 text-xs bg-purple-100 text-purple-700 px-1.5 rounded-full">🕌 Halal</span>` : ""}
+      </td>
+      <td class="px-3 py-3 text-sm text-center ${best ? "font-bold text-green-800" : "text-gray-700"}">
+        ${s.monthly !== null ? fmtCDec(s.monthly) + "/mo" : "—"}
+      </td>
+      <td class="px-3 py-3 text-sm text-center font-semibold ${best ? "text-green-800" : "text-gray-800"}">
+        ${fmtC(s.total)}
+      </td>
+      <td class="px-3 py-3 text-sm text-center ${s.extra > 100 ? "text-red-500" : "text-green-600"}">
+        ${s.extra > 100 ? "+" + fmtCDec(s.extra) : "✅ Lowest"}
+      </td>
+      <td class="px-3 py-3 text-center">
+        <button onclick="loadIntoCalc('${m.id}','${s.key}')"
+          class="text-xs px-2.5 py-1 rounded-lg text-white font-semibold transition hover:opacity-80"
+          style="background:${brandColor}">
+          Load →
+        </button>
+      </td>
+    </tr>`;
+  }).join("");
+
+  // Ontario dealer list for this make
+  const makedealers = DEALERS.filter(d => d.make === m.make).slice(0, 8);
+  const dealerChips = makedealers.map(d =>
+    `<a href="${d.website}" target="_blank"
+       class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border hover:bg-gray-50 transition text-gray-700">
+      <span>📍</span><span>${d.name}, ${d.city}</span>
+      ${d.hasZeroPercent ? `<span class="bg-green-100 text-green-700 px-1 rounded">0%</span>` : ""}
+      ${d.islamicFriendly ? `<span class="bg-purple-100 text-purple-700 px-1 rounded">🕌</span>` : ""}
+    </a>`
+  ).join("");
+
+  document.getElementById("model-detail").className = "";
+  document.getElementById("model-hint").className   = "hidden";
+  document.getElementById("model-detail").innerHTML = `
+
+  <!-- Model Header -->
+  <div class="bg-white rounded-2xl shadow p-5 mb-5">
+    <div class="flex items-start justify-between flex-wrap gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full text-white"
+                style="background:${brandColor}">${brandLabel}</span>
+          <span class="text-xs text-gray-500 uppercase tracking-wide">${m.category}</span>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-900">${m.year} ${brandLabel} ${m.model}
+          <span class="text-gray-500 text-lg">${m.trim}</span></h3>
+        <p class="text-sm text-gray-600 mt-0.5">${m.engine} · ${m.hp} hp · ${m.torque} lb-ft · ${m.mpgCity}/${m.mpgHwy} L/100km city/hwy</p>
+        <p class="text-sm text-gray-500 mt-1 italic">${m.notes}</p>
+      </div>
+      <div class="text-right shrink-0">
+        <div class="text-xs text-gray-400">MSRP + destination</div>
+        <div class="text-2xl font-bold text-gray-800">${fmtC(totalMSRP)}</div>
+        ${aplanSave > 0 ? `<div class="text-sm text-blue-700 font-semibold">A-Plan: −${fmtC(aplanSave)} (${m.aplanSavingsPct}%)</div>` : ""}
+        ${incentive > 0 ? `<div class="text-sm text-green-700 font-semibold">Incentive: −${fmtC(incentive)}</div>` : ""}
+        <div class="text-sm font-bold text-green-800 mt-1">On-road: ${fmtC(onRoad)}</div>
+      </div>
+    </div>
+    ${packageHtml}
+    ${compHtml}
+  </div>
+
+  <!-- ══════════ DEALER DEAL RANKER ══════════ -->
+  <div class="bg-white rounded-2xl shadow p-5 mb-5">
+    <div class="flex items-center justify-between flex-wrap gap-3 mb-1">
+      <div>
+        <h4 class="font-bold text-gray-900 text-lg">🏆 Dealer Deal Ranker
+          <span class="ml-2 text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">🇨🇦 CAD · HST included</span>
+        </h4>
+        <p class="text-xs text-gray-400">Every Ontario ${brandLabel} dealer ranked by estimated best price. Drag the slider to model your negotiation.</p>
+      </div>
+      <div class="flex items-center gap-2 bg-blue-50 rounded-xl px-4 py-2">
+        <span class="text-xs font-semibold text-blue-700 whitespace-nowrap">Dealer discount off MSRP:</span>
+        <input type="range" id="disc-slider" min="0" max="12" step="0.5" value="3"
+          oninput="updateDealerTable('${m.id}')"
+          class="w-28 accent-blue-600"/>
+        <span id="disc-label" class="text-lg font-bold text-blue-800 w-12 text-right">3.0%</span>
+      </div>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 mb-4">
+      💡 Large-volume dealers typically discount <strong>3–6%</strong> below MSRP.
+      Small dealers <strong>0–2%</strong>. A-Plan holders use the A-Plan price regardless of negotiation.
+      ${m.zeroPercentAvailableMonths > 0 ? `&nbsp;|&nbsp; ✅ <strong>0% for ${m.zeroPercentAvailableMonths}mo</strong> available on this model.` : ""}
+    </div>
+
+    <!-- Rank switch -->
+    <div class="flex gap-2 mb-3 text-xs font-semibold">
+      <button id="rank-lease" onclick="setRankMode('lease','${m.id}')"
+        class="px-3 py-1.5 rounded-lg bg-blue-600 text-white transition">Sort by: Best Lease/mo</button>
+      <button id="rank-finance" onclick="setRankMode('finance','${m.id}')"
+        class="px-3 py-1.5 rounded-lg bg-white border text-gray-600 hover:bg-gray-50 transition">Sort by: Best Finance/mo</button>
+      <button id="rank-total" onclick="setRankMode('total','${m.id}')"
+        class="px-3 py-1.5 rounded-lg bg-white border text-gray-600 hover:bg-gray-50 transition">Sort by: Total Price</button>
+    </div>
+
+    <div id="dealer-rank-table" class="overflow-x-auto rounded-xl border border-gray-200">
+      <!-- filled by updateDealerTable() -->
+    </div>
+    <p class="text-xs text-gray-400 mt-2">
+      ✅ All prices in <strong>Canadian dollars (CAD)</strong> with Ontario HST (13%) already included.
+      Lease = 36mo, $0 down. Finance = 60mo at ${m.financeRates.r60}% (or 0% if available on this model).
+      Estimated only — confirm with dealer before committing.
+    </p>
+  </div>
+
+  ${buildDecisionEngine(m)}
+
+  <!-- Payment Scenarios -->
+  <div class="bg-white rounded-2xl shadow p-5 mb-5">
+    <h4 class="font-semibold text-gray-800 mb-1">💰 Payment Methods at MSRP
+      <span class="text-sm font-normal text-gray-400">(no down payment, HST included)</span></h4>
+    <p class="text-xs text-gray-400 mb-3">⭐ = lowest total cost. Click "Load →" to pre-fill the Calculator tab.</p>
+    <div class="overflow-x-auto rounded-xl border border-gray-200">
+      <table class="w-full text-left min-w-[560px]">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-3 py-2 text-xs text-gray-500 font-semibold">Scenario</th>
+            <th class="px-3 py-2 text-xs text-gray-500 font-semibold text-center">Monthly</th>
+            <th class="px-3 py-2 text-xs text-gray-500 font-semibold text-center">Total Cost</th>
+            <th class="px-3 py-2 text-xs text-gray-500 font-semibold text-center">vs Cash</th>
+            <th class="px-3 py-2 text-xs text-gray-500 font-semibold text-center">Open</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">${tableRows}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Finance rates -->
+  <div class="bg-white rounded-2xl shadow p-5 mb-5">
+    <h4 class="font-semibold text-gray-800 mb-3">📋 Published Finance Rates</h4>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      ${[36,48,60,72].map(t => {
+        const r = m.financeRates["r"+t];
+        return `<div class="rounded-xl border p-3 text-center ${r===0?"border-green-300 bg-green-50":"border-gray-200 bg-gray-50"}">
+          <div class="text-xs text-gray-500 mb-0.5">${t} months</div>
+          <div class="font-bold ${r===0?"text-green-700":"text-gray-800"}">${r===0?"0% ✅":r+"%"}</div>
+        </div>`;
+      }).join("")}
+    </div>
+    ${m.zeroPercentAvailableMonths > 0
+      ? `<p class="text-xs text-green-700 bg-green-50 rounded-lg p-2 mt-3">✅ 0% available up to ${m.zeroPercentAvailableMonths} months on this model.</p>`
+      : `<p class="text-xs text-amber-700 bg-amber-50 rounded-lg p-2 mt-3">⚠ No 0% rate available. Consider Islamic finance or cash.</p>`}
+  </div>
+
+  <p class="text-xs text-gray-400 text-center mb-6">
+    * MSRP, lease rates, and residual values are based on published 2026 programs. Always verify with dealer before committing.
+  </p>`;
+
+  // Build the dealer rank table immediately
+  window._currentRankMode = "lease";
+  updateDealerTable(m.id);
+}
+
+function buildDecisionEngine(m) {
+  const totalMSRP   = m.msrp + m.destinationCAD;
+  const incentive   = m.canadianIncentive || 0;
+  const afterAll    = totalMSRP - (m.aplanSavingsPct > 0 ? totalMSRP * m.aplanSavingsPct/100 : 0) - incentive;
+  const principal   = afterAll * 1.13;  // on-road incl HST
+
+  // ── Lease (36mo) ──
+  const lmf         = m.lease36.mf;
+  const leaseAPR    = lmf * 2400;
+  const residual    = afterAll * (m.lease36.residualPct / 100);
+  const depr        = (afterAll - residual) / 36;
+  const finCh       = (afterAll + residual) * lmf;
+  const leaseMo     = (depr + finCh) * 1.13;
+
+  // ── Best finance rate ──
+  const bestFinRate = Math.min(...[36,48,60,72].map(t => m.financeRates["r"+t]));
+  const fin0        = m.zeroPercentAvailableMonths > 0;
+  const useRate     = fin0 ? 0 : m.financeRates.r60;
+  const useTerm     = fin0 ? m.zeroPercentAvailableMonths : 60;
+  let   finMo;
+  if (useRate === 0) {
+    finMo = principal / useTerm;
+  } else {
+    const r = useRate / 100 / 12;
+    finMo = principal * r * Math.pow(1+r, useTerm) / (Math.pow(1+r, useTerm) - 1);
+  }
+
+  // ── The Decision Formula ──
+  // Financing costs more per month but you OWN the car (worth residual) at end.
+  // Extra you pay per month to finance instead of lease:
+  const extraPerMo  = finMo - leaseMo;
+  // Total extra paid over the lease term (36mo = apples-to-apples comparison period):
+  const totalExtraPaid = extraPerMo * 36;
+  // What you GET for those extra payments — the car's residual value:
+  const residualCAD = residual;  // pre-HST residual (trade-in / private sale value)
+  // Net verdict:
+  const netEquityGain = residualCAD - totalExtraPaid;
+  // Money factor vs finance APR:
+  const mfEquivAPR  = leaseAPR;
+
+  // ── Special overrides ──
+  let verdict, verdictColor, verdictIcon, explanation;
+
+  if (fin0) {
+    // 0% finance almost always beats leasing
+    verdict      = "0% Finance wins — take it";
+    verdictColor = "green";
+    verdictIcon  = "✅";
+    explanation  = `<strong>0% financing for ${useTerm} months</strong> is available on this model. 
+      You pay no interest AND own the car at the end. This almost always beats leasing 
+      unless the lease money factor is also at or near 0%. 
+      At 0%, every dollar you pay directly reduces your balance — it's essentially a savings plan in a car.`;
+  } else if (mfEquivAPR < useRate) {
+    verdict      = "Lease likely better — cheaper \"interest rate\"";
+    verdictColor = "blue";
+    verdictIcon  = "🏷️";
+    explanation  = `The lease money factor (${lmf.toFixed(5)}) converts to an equivalent APR of 
+      <strong>${mfEquivAPR.toFixed(2)}%</strong>, which is cheaper than the best finance rate of 
+      <strong>${useRate}%</strong>. The manufacturer is subsidising the lease — this is a promoted lease deal.
+      Compare: you pay <strong>${fmtCDec(leaseMo)}/mo</strong> leasing vs 
+      <strong>${fmtCDec(finMo)}/mo</strong> financing.`;
+  } else if (netEquityGain > 0) {
+    verdict      = "Finance wins — you're building equity cheaply";
+    verdictColor = "green";
+    verdictIcon  = "📈";
+    explanation  = `By financing instead of leasing, you pay an extra 
+      <strong>${fmtCDec(extraPerMo)}/mo</strong> (${fmtC(totalExtraPaid)} over 36mo). 
+      But at the end you OWN a car worth approximately <strong>${fmtC(residualCAD)}</strong>. 
+      Your net equity gain vs leasing: <strong class="text-green-700">+${fmtC(netEquityGain)}</strong>. 
+      Financing is the better deal here.`;
+  } else {
+    verdict      = "Lease wins — manufacturer is subsidising it";
+    verdictColor = "blue";
+    verdictIcon  = "🏷️";
+    explanation  = `By financing instead of leasing, you'd pay an extra 
+      <strong>${fmtCDec(extraPerMo)}/mo</strong> (${fmtC(totalExtraPaid)} over 36mo). 
+      The car is only worth ~<strong>${fmtC(residualCAD)}</strong> at end of term. 
+      You'd be overpaying by <strong class="text-red-600">${fmtC(Math.abs(netEquityGain))}</strong> 
+      compared to leasing and walking away. The lease is the better deal here.`;
+  }
+
+  const colorMap = {
+    green: { bg:"bg-green-50", border:"border-green-300", title:"text-green-900", badge:"bg-green-600" },
+    blue:  { bg:"bg-blue-50",  border:"border-blue-300",  title:"text-blue-900",  badge:"bg-blue-600"  },
+  };
+  const c = colorMap[verdictColor];
+
+  return `
+  <div class="${c.bg} border-2 ${c.border} rounded-2xl p-5 mb-5">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-2xl">${verdictIcon}</span>
+      <div>
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Lease vs Finance Decision Engine</div>
+        <div class="text-xl font-bold ${c.title}">${verdict}</div>
+      </div>
+    </div>
+
+    <p class="text-sm text-gray-700 mb-4">${explanation}</p>
+
+    <!-- Formula breakdown -->
+    <div class="bg-white/70 rounded-xl p-4">
+      <div class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">The Math</div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-center mb-3">
+        <div class="bg-white rounded-lg p-3 border">
+          <div class="text-xs text-gray-400 mb-0.5">Lease payment / mo</div>
+          <div class="text-xl font-bold text-blue-700">${fmtCDec(leaseMo)}</div>
+          <div class="text-xs text-gray-400">36mo · MF ${lmf.toFixed(5)} = ${mfEquivAPR.toFixed(2)}% APR</div>
+        </div>
+        <div class="bg-white rounded-lg p-3 border">
+          <div class="text-xs text-gray-400 mb-0.5">Finance payment / mo</div>
+          <div class="text-xl font-bold text-gray-800">${fmtCDec(finMo)}</div>
+          <div class="text-xs text-gray-400">${useTerm}mo · ${useRate}% APR</div>
+        </div>
+        <div class="bg-white rounded-lg p-3 border">
+          <div class="text-xs text-gray-400 mb-0.5">Residual value</div>
+          <div class="text-xl font-bold text-gray-800">${fmtC(residualCAD)}</div>
+          <div class="text-xs text-gray-400">${m.lease36.residualPct}% of MSRP after 36mo</div>
+        </div>
+      </div>
+      <div class="text-xs text-gray-600 bg-gray-50 rounded-lg p-3 font-mono leading-relaxed">
+        Extra/mo to finance = ${fmtCDec(finMo)} − ${fmtCDec(leaseMo)} = <strong>${fmtCDec(Math.abs(extraPerMo))} ${extraPerMo >= 0 ? "more/mo" : "LESS/mo"}</strong><br/>
+        Total extra over 36mo = ${fmtCDec(Math.abs(extraPerMo))} × 36 = <strong>${fmtC(Math.abs(totalExtraPaid))}</strong><br/>
+        Car residual value at 36mo = <strong>${fmtC(residualCAD)}</strong><br/>
+        Net equity gain from financing = ${fmtC(residualCAD)} − ${fmtC(Math.abs(totalExtraPaid))} = 
+        <strong class="${netEquityGain >= 0 ? "text-green-700" : "text-red-600"}">${netEquityGain >= 0 ? "+" : ""}${fmtC(netEquityGain)}</strong>
+        ${fin0 ? `<br/><strong class="text-green-700">0% rate overrides: no interest paid either way — finance wins.</strong>` : ""}
+      </div>
+      <p class="text-xs text-gray-400 mt-2">
+        Rule: If <strong>residual &gt; total extra payments</strong> → Finance wins. If <strong>residual &lt; total extra payments</strong> → Lease wins.
+        0% finance always wins unless lease MF is also ~0.
+      </p>
+    </div>
+  </div>`;
+}
+
+function setRankMode(mode, modelId) {
+  window._currentRankMode = mode;
+  ["lease","finance","total"].forEach(k => {
+    const btn = document.getElementById("rank-" + k);
+    if (!btn) return;
+    btn.className = k === mode
+      ? "px-3 py-1.5 rounded-lg bg-blue-600 text-white transition text-xs font-semibold"
+      : "px-3 py-1.5 rounded-lg bg-white border text-gray-600 hover:bg-gray-50 transition text-xs font-semibold";
+  });
+  updateDealerTable(modelId);
+}
+
+function updateDealerTable(modelId) {
+  const m = MODELS.find(x => x.id === modelId);
+  if (!m) return;
+  const sliderEl = document.getElementById("disc-slider");
+  const labelEl  = document.getElementById("disc-label");
+  const baseDiscPct = sliderEl ? parseFloat(sliderEl.value) : 3;
+  if (labelEl) labelEl.textContent = baseDiscPct.toFixed(1) + "%";
+
+  // Size-based discount multipliers (large dealers can go deeper)
+  const sizeBonus = { large: 1.5, medium: 1.0, small: 0.5 };
+
+  const makedealers = DEALERS.filter(d => d.make === m.make);
+
+  if (makedealers.length === 0) {
+    const t = document.getElementById("dealer-rank-table");
+    if (t) t.innerHTML = `<p class="p-4 text-sm text-gray-400">No dealers in our database for this make yet.</p>`;
+    return;
+  }
+
+  const totalMSRP    = m.msrp + m.destinationCAD;
+  const incentive    = m.canadianIncentive || 0;
+  const lmf          = m.lease36.mf;
+  const residualPct  = m.lease36.residualPct;
+  const leaseTerm    = 36;
+  const finRate60    = m.financeRates.r60;
+  const fin0Term     = m.zeroPercentAvailableMonths || 0;
+
+  const rows = makedealers.map(d => {
+    const bonus      = sizeBonus[d.size] || 1.0;
+    const discPct    = Math.min(baseDiscPct * bonus, 15);
+
+    // Price path: MSRP → dealer discount → manufacturer incentive → HST
+    const afterDealerDisc = totalMSRP * (1 - discPct / 100);
+    const afterIncentive  = afterDealerDisc - incentive;
+    const hstAmt          = afterIncentive * 0.13;
+    const totalOnRoad     = afterIncentive + hstAmt;
+
+    // --- Lease (36mo, no down) ---
+    const residual     = afterDealerDisc * (residualPct / 100);
+    const depr         = (afterDealerDisc - residual) / leaseTerm;
+    const finCh        = (afterDealerDisc + residual) * lmf;
+    const leaseMonthly = (depr + finCh) * 1.13;
+
+    // --- Finance (best available rate) ---
+    let finMonthly, finLabel;
+    const principal = afterIncentive * 1.13; // financed on-road price
+    if (fin0Term > 0 && (d.hasZeroPercent || m.zeroPercentAvailableMonths > 0)) {
+      finMonthly = principal / fin0Term;
+      finLabel   = "0%/" + fin0Term + "mo";
+    } else {
+      const r = finRate60 / 100 / 12;
+      finMonthly = r > 0
+        ? principal * r * Math.pow(1+r,60) / (Math.pow(1+r,60)-1)
+        : principal / 60;
+      finLabel = finRate60 + "%/60mo";
+    }
+
+    // Islamic Murabaha 6.5% flat / 60mo
+    const islamMonthly = (principal * 1.065) / 60;
+
+    return {
+      d, discPct, afterDealerDisc, totalOnRoad,
+      leaseMonthly, finMonthly, islamMonthly, finLabel,
+      leaseTotal: leaseMonthly * leaseTerm,
+      finTotal:   finMonthly * 60,
+    };
+  });
+
+  // Sort
+  const mode = window._currentRankMode || "lease";
+  rows.sort((a, b) =>
+    mode === "lease"   ? a.leaseMonthly - b.leaseMonthly :
+    mode === "finance" ? a.finMonthly   - b.finMonthly :
+                         a.totalOnRoad  - b.totalOnRoad);
+
+  const makeInfo   = MAKES.find(x => x.id === m.make);
+  const brandColor = makeInfo ? makeInfo.color : "#1f2937";
+  const sizeLabel  = { large:"🏬 Large", medium:"🏪 Medium", small:"🏠 Small" };
+
+  const tableHtml = `
+  <table class="w-full text-left min-w-[700px]">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-3 py-2 text-xs text-gray-500 font-semibold">#</th>
+        <th class="px-3 py-2 text-xs text-gray-500 font-semibold">Dealer</th>
+        <th class="px-3 py-2 text-xs text-gray-500 font-semibold text-center">Est. Discount</th>
+        <th class="px-3 py-2 text-xs text-gray-500 font-semibold text-center">Est. Price CAD<br/><span class="font-normal text-gray-400">on-road + HST</span></th>
+        <th class="px-3 py-2 text-xs text-gray-500 font-semibold text-center">Lease/mo CAD<br/><span class="font-normal text-gray-400">36mo · $0 down · +HST</span></th>
+        <th class="px-3 py-2 text-xs text-gray-500 font-semibold text-center">Finance/mo CAD<br/><span class="font-normal text-gray-400">best rate · +HST</span></th>
+        <th class="px-3 py-2 text-xs text-gray-500 font-semibold text-center">Islamic/mo CAD<br/><span class="font-normal text-gray-400">6.5% flat · +HST</span></th>
+        <th class="px-3 py-2 text-xs text-gray-500 font-semibold text-center">Contact</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      ${rows.map((r, i) => {
+        const medal  = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i+1}`;
+        const isBest = i === 0;
+        return `<tr class="${isBest ? "bg-green-50 font-medium" : "hover:bg-gray-50"} transition">
+          <td class="px-3 py-3 text-sm text-center font-bold ${isBest ? "text-green-700" : "text-gray-400"}">${medal}</td>
+          <td class="px-3 py-3">
+            <div class="text-sm font-semibold text-gray-800">${r.d.name}</div>
+            <div class="text-xs text-gray-500">📍 ${r.d.city} · ${sizeLabel[r.d.size]||r.d.size}</div>
+            <div class="flex flex-wrap gap-1 mt-1">
+              ${r.d.hasZeroPercent  ? `<span class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">✅ 0%</span>` : ""}
+              ${r.d.islamicFriendly ? `<span class="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">🕌 Islamic</span>` : ""}
+            </div>
+          </td>
+          <td class="px-3 py-3 text-sm text-center">
+            <span class="font-semibold ${isBest ? "text-green-700" : "text-gray-700"}">−${r.discPct.toFixed(1)}%</span>
+            <div class="text-xs text-gray-400">−${fmtC(totalMSRP * r.discPct / 100)}</div>
+          </td>
+          <td class="px-3 py-3 text-sm text-center font-bold ${isBest ? "text-green-800" : "text-gray-800"}">
+            ${fmtC(r.totalOnRoad)}
+          </td>
+          <td class="px-3 py-3 text-sm text-center ${mode==="lease"&&isBest?"font-bold text-green-700":"text-gray-700"}">
+            ${fmtCDec(r.leaseMonthly)}/mo
+          </td>
+          <td class="px-3 py-3 text-sm text-center ${mode==="finance"&&isBest?"font-bold text-green-700":"text-gray-700"}">
+            ${fmtCDec(r.finMonthly)}/mo
+            <div class="text-xs text-gray-400">${r.finLabel}</div>
+          </td>
+          <td class="px-3 py-3 text-sm text-center text-purple-700">
+            ${fmtCDec(r.islamMonthly)}/mo
+          </td>
+          <td class="px-3 py-3 text-center">
+            <div class="flex flex-col gap-1 items-center">
+              <a href="${r.d.website}" target="_blank"
+                 class="text-xs text-white px-2.5 py-1 rounded-lg font-semibold"
+                 style="background:${brandColor}">Site ↗</a>
+              ${r.d.phone ? `<span class="text-xs text-gray-500">${r.d.phone}</span>` : ""}
+            </div>
+          </td>
+        </tr>`;
+      }).join("")}
+    </tbody>
+  </table>`;
+
+  const t = document.getElementById("dealer-rank-table");
+  if (t) t.innerHTML = tableHtml;
+}
+
+function loadIntoCalc(modelId, scenarioKey) {
+  const m = MODELS.find(x => x.id === modelId);
+  if (!m) return;
+
+  const totalMSRP = m.msrp + m.destinationCAD;
+  document.getElementById("msrp").value     = totalMSRP;
+  document.getElementById("downpayment").value = 0;
+  document.getElementById("hst").checked   = true;
+
+  if (m.aplanSavingsPct > 0) {
+    document.getElementById("aplan").checked  = true;
+    document.getElementById("aplanPct").value = m.aplanSavingsPct;
+  } else {
+    document.getElementById("aplan").checked  = false;
+    document.getElementById("aplanPct").value = 0;
+  }
+
+  if (scenarioKey === "fin0" || scenarioKey === "fin60") {
+    setPt("finance");
+    document.getElementById("finRate").value = scenarioKey === "fin0" ? 0 : m.financeRates.r60;
+    document.getElementById("finTerm").value = scenarioKey === "fin0" ? (m.zeroPercentAvailableMonths||60) : 60;
+  } else if (scenarioKey === "islamic") {
+    setPt("islamic");
+    document.getElementById("islamRate").value = 6.5;
+    document.getElementById("islamTerm").value = 60;
+  } else if (scenarioKey === "lease") {
+    setPt("lease");
+    document.getElementById("leaseRate").value     = m.lease36.mf;
+    document.getElementById("leaseTerm").value     = 36;
+    document.getElementById("leaseResidual").value = m.lease36.residualPct;
+  } else {
+    setPt("cash");
+  }
+
+  calculate();
+  showTab("calc");
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────
+buildMakePicker();
+buildModelMakeFilter();
+renderDealers();
+// Force dropdowns to "all" so browser form-state cache can't block results
+document.getElementById("model-make-filter").value = "all";
+document.getElementById("model-cat-filter").value  = "all";
+filterModelList(false);   // render all model pills on load
+calculate();
+</script>
+</body>
+</html>
