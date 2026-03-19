@@ -26,7 +26,7 @@ if (!API_KEY) {
 
 // Ontario search centres (lat/lng) with radius in metres
 const SEARCH_ZONES = [
-  { label: "Toronto GTA",  lat: 43.7001, lng: -79.4163, radius: 60000 },
+  { label: "Toronto GTA",  lat: 43.7001, lng: -79.4163, radius: 50000 },
   { label: "Mississauga",  lat: 43.5890, lng: -79.6441, radius: 30000 },
   { label: "Brampton",     lat: 43.7315, lng: -79.7624, radius: 25000 },
   { label: "Hamilton",     lat: 43.2557, lng: -79.8711, radius: 30000 },
