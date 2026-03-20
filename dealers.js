@@ -56,7 +56,23 @@ const MAKES = [
     "id": "ram",
     "label": "Ram",
     "color": "#1a1a1a"
-  }
+  },
+  { "id": "gmc",        "label": "GMC",           "color": "#cc0022" },
+  { "id": "mazda",      "label": "Mazda",         "color": "#91002b" },
+  { "id": "volkswagen", "label": "Volkswagen",    "color": "#001e50" },
+  { "id": "bmw",        "label": "BMW",           "color": "#0066cc" },
+  { "id": "mercedes",   "label": "Mercedes-Benz", "color": "#222222" },
+  { "id": "audi",       "label": "Audi",          "color": "#bb0a30" },
+  { "id": "lexus",      "label": "Lexus",         "color": "#1a1a2e" },
+  { "id": "acura",      "label": "Acura",         "color": "#cc0000" },
+  { "id": "infiniti",   "label": "Infiniti",      "color": "#1d1d1d" },
+  { "id": "dodge",      "label": "Dodge",         "color": "#c31926" },
+  { "id": "buick",      "label": "Buick",         "color": "#35302b" },
+  { "id": "cadillac",   "label": "Cadillac",      "color": "#8b7b69" },
+  { "id": "lincoln",    "label": "Lincoln",       "color": "#003865" },
+  { "id": "volvo",      "label": "Volvo",         "color": "#003057" },
+  { "id": "tesla",      "label": "Tesla",         "color": "#cc0000" },
+  { "id": "mitsubishi", "label": "Mitsubishi",    "color": "#d01228" }
 ];
 
 const DEALERS = [
