@@ -1046,9 +1046,10 @@ function renderModelDetail() {
   const brandLabel = makeInfo ? makeInfo.label : m.make;
 
   // ── Price baseline (MSRP + destination, no tax yet) ──
+  // A-Plan is intentionally excluded here — it only applies in the Calculator tab
   const totalMSRP  = m.msrp + m.destinationCAD;
-  const aplanSave  = m.aplanSavingsPct > 0 ? totalMSRP * (m.aplanSavingsPct / 100) : 0;
-  const afterAplan = totalMSRP - aplanSave;
+  const aplanSave  = 0;  // hidden from model detail — Calculator only
+  const afterAplan = totalMSRP;
   const incentive  = m.canadianIncentive || 0;
   const afterAll   = afterAplan - incentive;
   const hst        = afterAll * 0.13;
@@ -1173,7 +1174,6 @@ function renderModelDetail() {
       <div class="text-right shrink-0">
         <div class="text-xs text-gray-400">MSRP + destination</div>
         <div class="text-2xl font-bold text-gray-800">${fmtC(totalMSRP)}</div>
-        ${aplanSave > 0 ? `<div class="text-sm text-blue-700 font-semibold">A-Plan: −${fmtC(aplanSave)} (${m.aplanSavingsPct}%)</div>` : ""}
         ${incentive > 0 ? `<div class="text-sm text-green-700 font-semibold">Incentive: −${fmtC(incentive)}</div>` : ""}
         <div class="text-sm font-bold text-green-800 mt-1">On-road: ${fmtC(onRoad)}</div>
       </div>
@@ -1200,8 +1200,8 @@ function renderModelDetail() {
       </div>
     </div>
     <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 mb-4">
-      💡 Large-volume dealers typically discount <strong>3–6%</strong> below MSRP.
-      Small dealers <strong>0–2%</strong>. A-Plan holders use the A-Plan price regardless of negotiation.
+      💡 Discount estimates are based on dealer volume tier — actual negotiated prices vary.
+      Large dealers typically discount <strong>3–6%</strong>, small dealers <strong>0–2%</strong>.
       ${m.zeroPercentAvailableMonths > 0 ? `&nbsp;|&nbsp; ✅ <strong>0% for ${m.zeroPercentAvailableMonths}mo</strong> available on this model.` : ""}
     </div>
 
@@ -1277,7 +1277,8 @@ function renderModelDetail() {
 function buildDecisionEngine(m) {
   const totalMSRP   = m.msrp + m.destinationCAD;
   const incentive   = m.canadianIncentive || 0;
-  const afterAll    = totalMSRP - (m.aplanSavingsPct > 0 ? totalMSRP * m.aplanSavingsPct/100 : 0) - incentive;
+  // A-Plan excluded from model detail — Calculator only
+  const afterAll    = totalMSRP - incentive;
   const principal   = afterAll * 1.13;  // on-road incl HST
 
   // ── Lease (36mo) ──
