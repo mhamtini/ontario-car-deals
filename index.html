@@ -315,13 +315,23 @@
     </div>
   </div>
 
-  <!-- Model pill list -->
-  <div id="model-pill-list" class="flex flex-wrap gap-2 mb-6"></div>
+  <!-- Step 2 results: unique model name pills -->
+  <div id="model-pill-list" class="flex flex-wrap gap-2 mb-4"></div>
+
+  <!-- Step 3: Trim picker (appears after clicking a model name) -->
+  <div id="trim-selector" class="hidden bg-white rounded-2xl shadow p-4 mb-5 border-l-4" id="trim-selector">
+    <div class="flex items-center gap-3 mb-3">
+      <button onclick="clearModelName()" class="text-xs text-blue-600 hover:text-blue-800 font-semibold hover:underline">← Back to models</button>
+      <span id="trim-selector-label" class="text-sm font-bold text-gray-700"></span>
+    </div>
+    <p class="text-xs text-gray-400 mb-2">Choose a trim / package level:</p>
+    <div id="model-trim-list" class="flex flex-wrap gap-2"></div>
+  </div>
 
   <!-- Hint shown before any model is selected -->
   <div id="model-hint" class="text-center py-12 text-gray-400">
     <div class="text-4xl mb-2">🔎</div>
-    <p class="text-sm">Type a model name above (e.g. <strong>Bronco</strong>, <strong>RAV4</strong>, <strong>Wrangler</strong>) or click any pill to see full pricing.</p>
+    <p class="text-sm">Choose a brand above, then click a model name to pick your trim level.</p>
   </div>
 
   <!-- Detail panel (hidden until a model is selected) -->
@@ -859,6 +869,7 @@ let selectedModel = null;
 
 // Track selected brand filter (replaces old dropdown)
 let selectedMakeFilter = "all";
+let selectedModelName  = null;   // e.g. "ford|Maverick"
 
 function buildModelMakeFilter() {
   renderBrandGrid();
@@ -895,10 +906,14 @@ function filterBrandGrid() {
 
 function selectMakeFilter(makeId) {
   selectedMakeFilter = makeId;
+  selectedModelName  = null;
+  selectedModel      = null;
   renderBrandGrid();
-  // clear model text search when switching brand
   document.getElementById("model-search").value = "";
-  filterModelList(true);
+  document.getElementById("trim-selector").classList.add("hidden");
+  document.getElementById("model-detail").classList.add("hidden");
+  document.getElementById("model-hint").classList.remove("hidden");
+  filterModelList(false);
 }
 
 function filterModelList(autoSelect) {
@@ -909,50 +924,111 @@ function filterModelList(autoSelect) {
   const filtered = MODELS.filter(m => {
     const matchQ    = !q || (m.model + " " + m.trim + " " + m.make).toLowerCase().includes(q);
     const matchMake = make === "all" || m.make === make;
-    // "suv" bucket covers both suv and off-road suv
     const catNorm   = m.category.replace("off-road ", "");
     const matchCat  = cat === "all" || catNorm === cat || m.category === cat;
     return matchQ && matchMake && matchCat;
   });
 
-  // Auto-select first result whenever the user triggers a search
-  if (autoSelect !== false && filtered.length > 0) {
-    // keep selection if it's still in the filtered list, otherwise pick first
-    const stillVisible = filtered.find(m => selectedModel && m.id === selectedModel.id);
-    if (!stillVisible) {
-      selectedModel = filtered[0];
-    }
-  }
+  // Build unique model name keys (make|model)
+  const seen = new Set();
+  const uniqueModels = [];
+  filtered.forEach(m => {
+    const key = m.make + "|" + m.model;
+    if (!seen.has(key)) { seen.add(key); uniqueModels.push({ key, make: m.make, model: m.model }); }
+  });
 
   const container = document.getElementById("model-pill-list");
-  container.innerHTML = filtered.map(m => {
-    const makeInfo = MAKES.find(x => x.id === m.make);
-    const color    = makeInfo ? makeInfo.color : "#374151";
-    const active   = selectedModel && selectedModel.id === m.id;
-    return `<button onclick="selectModel('${m.id}')"
-      class="px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition"
-      style="border-color:${color};
-             background:${active ? color : "white"};
-             color:${active ? "white" : color}">
-      ${m.year} ${makeInfo ? makeInfo.label : ""} ${m.model} ${m.trim}
-    </button>`;
-  }).join("");
-
-  if (filtered.length === 0) {
-    container.innerHTML = `<p class="text-sm text-gray-400">No models match — try a different spelling.</p>`;
-    document.getElementById("model-detail").className = "hidden";
-    document.getElementById("model-hint").className   = "";
+  if (uniqueModels.length === 0) {
+    container.innerHTML = `<p class="text-sm text-gray-400">No models match. Try a different brand or search term.</p>`;
+    document.getElementById("trim-selector").classList.add("hidden");
+    document.getElementById("model-detail").classList.add("hidden");
+    document.getElementById("model-hint").classList.remove("hidden");
     return;
   }
 
-  if (selectedModel) renderModelDetail();
+  container.innerHTML = uniqueModels.map(({ key, make: makeId, model: modelName }) => {
+    const makeInfo  = MAKES.find(x => x.id === makeId);
+    const color     = makeInfo ? makeInfo.color : "#374151";
+    const active    = selectedModelName === key;
+    const trimCount = filtered.filter(m => m.make === makeId && m.model === modelName).length;
+    return `<button onclick="selectModelName('${key}')"
+      class="px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition flex items-center gap-1.5"
+      style="border-color:${color};
+             background:${active ? color : 'white'};
+             color:${active ? 'white' : color}">
+      ${modelName}
+      <span style="opacity:.65;font-size:10px">${trimCount} trim${trimCount > 1 ? 's' : ''}</span>
+    </button>`;
+  }).join("");
+
+  // If a model name was already selected, refresh its trim list
+  if (selectedModelName) {
+    const [selMakeId, selModelName] = selectedModelName.split("|");
+    const trims = filtered.filter(m => m.make === selMakeId && m.model === selModelName);
+    if (trims.length > 0) {
+      renderTrimList(trims);
+    } else {
+      clearModelName();
+    }
+  }
+}
+
+function selectModelName(key) {
+  selectedModelName = key;
+  selectedModel     = null;
+  filterModelList(false);
+
+  const [makeId, modelName] = key.split("|");
+  const trims = MODELS.filter(m => m.make === makeId && m.model === modelName);
+  renderTrimList(trims);
+}
+
+function renderTrimList(trims) {
+  const makeInfo  = MAKES.find(x => x.id === trims[0].make);
+  const color     = makeInfo ? makeInfo.color : "#374151";
+  const selector  = document.getElementById("trim-selector");
+  const label     = document.getElementById("trim-selector-label");
+  const trimList  = document.getElementById("model-trim-list");
+
+  selector.style.borderColor = color;
+  label.textContent = (makeInfo ? makeInfo.label + " " : "") + trims[0].model + " — choose a trim:";
+
+  trimList.innerHTML = trims.map(m => {
+    const active = selectedModel && selectedModel.id === m.id;
+    return `<button onclick="selectModel('${m.id}')"
+      class="px-3 py-2 rounded-xl text-xs font-semibold border-2 transition text-left"
+      style="border-color:${color};
+             background:${active ? color : 'white'};
+             color:${active ? 'white' : color}">
+      <span class="font-bold">${m.trim}</span>
+      <span style="opacity:.7"> · ${m.year} · $${m.msrp.toLocaleString('en-CA')}</span>
+    </button>`;
+  }).join("");
+
+  selector.classList.remove("hidden");
+  document.getElementById("model-hint").classList.add("hidden");
+  if (!selectedModel) document.getElementById("model-detail").classList.add("hidden");
+}
+
+function clearModelName() {
+  selectedModelName = null;
+  selectedModel     = null;
+  document.getElementById("trim-selector").classList.add("hidden");
+  document.getElementById("model-detail").classList.add("hidden");
+  document.getElementById("model-hint").classList.remove("hidden");
+  filterModelList(false);
 }
 
 function selectModel(id) {
   selectedModel = MODELS.find(m => m.id === id);
   if (!selectedModel) return;
-  filterModelList(false);    // re-render pills to show active state (no auto-select)
+  // re-render trim pills to show active state
+  const [makeId, modelName] = selectedModelName ? selectedModelName.split("|") : [selectedModel.make, selectedModel.model];
+  const trims = MODELS.filter(m => m.make === makeId && m.model === modelName);
+  renderTrimList(trims);
   renderModelDetail();
+  // scroll detail into view
+  setTimeout(() => document.getElementById("model-detail").scrollIntoView({ behavior: "smooth", block: "start" }), 100);
 }
 
 function fmtC(n) {
